@@ -8,7 +8,7 @@ export default function Home() {
   const [appointments, setAppointments] = useState([]);
   const [userName, setUserName] = useState('');
   const [userRole, setUserRole] = useState('');
-  const [selectedDentistId, setSelectedDentistId] = useState<number | null>(null); // Nowy stan filtrowania
+  const [selectedDentistId, setSelectedDentistId] = useState<number | null>(null);
   const router = useRouter();
 
   const fetchData = async () => {
@@ -16,16 +16,19 @@ export default function Home() {
     if (!token) return;
 
     try {
+      // Pobieranie wizyt użytkownika [cite: 55]
       const resApps = await fetch('http://127.0.0.1:8000/appointments', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const dataApps = await resApps.json();
       setAppointments(Array.isArray(dataApps) ? dataApps : []);
 
+      // Pobieranie listy lekarzy [cite: 13]
       const resDentists = await fetch('http://127.0.0.1:8000/dentists');
       const dataDentists = await resDentists.json();
       setDentists(Array.isArray(dataDentists) ? dataDentists : []);
 
+      // Pobieranie wolnych terminów [cite: 30]
       const resSlots = await fetch('http://127.0.0.1:8000/slots');
       const dataSlots = await resSlots.json();
       setSlots(Array.isArray(dataSlots) ? dataSlots : []);
@@ -50,7 +53,6 @@ export default function Home() {
     }
   }, [router]);
 
-  // Logika filtrowania slotów
   const filteredSlots = selectedDentistId
     ? slots.filter((s: any) => s.dentist_id === selectedDentistId)
     : slots;
@@ -124,7 +126,7 @@ export default function Home() {
         </header>
 
         <div className="grid gap-10 lg:grid-cols-3">
-          {/* LEKARZE - FILTROWANIE */}
+          {/* LEKARZE - Z DANYMI KONTAKTOWYMI [cite: 13-19] */}
           <section className="space-y-4">
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-bold flex items-center gap-2 text-slate-800">
@@ -152,13 +154,24 @@ export default function Home() {
                   }`}
                 >
                   <p className="font-bold text-lg text-slate-800 text-sm">dr {d.first_name} {d.last_name}</p>
-                  <p className="text-blue-500 text-[9px] font-black uppercase tracking-widest">{d.specialization}</p>
+                  <p className="text-blue-500 text-[9px] font-black uppercase tracking-widest mb-2">{d.specialization}</p>
+
+                  <div className="pt-2 border-t border-slate-100 space-y-1">
+                    <p className="text-[10px] text-slate-500 flex flex-col">
+                      <span className="font-bold uppercase text-slate-400 text-[8px]">Email:</span>
+                      {d.email || 'Nie podano'}
+                    </p>
+                    <p className="text-[10px] text-slate-500 flex flex-col">
+                      <span className="font-bold uppercase text-slate-400 text-[8px]">Telefon:</span>
+                      {d.phone_number || 'Nie podano'}
+                    </p>
+                  </div>
                 </button>
               ))}
             </div>
           </section>
 
-          {/* TERMINY - WYŚWIETLANIE PRZEFILTROWANYCH */}
+          {/* TERMINY [cite: 30] */}
           <section className="lg:col-span-2 space-y-4">
             <h2 className="text-xl font-bold flex items-center gap-2 text-slate-800">
               <span className="w-1.5 h-6 bg-emerald-500 rounded-full"></span>
@@ -191,7 +204,7 @@ export default function Home() {
           </section>
         </div>
 
-        {/* MOJE WIZYTY */}
+        {/* MOJE WIZYTY [cite: 37] */}
         <section className="space-y-6">
           <h2 className="text-2xl font-black text-slate-800 flex items-center gap-3">
             Twoje Wizyty

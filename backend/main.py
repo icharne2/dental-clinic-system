@@ -123,7 +123,8 @@ def login(login_data: UserLogin):
 def get_dentists():
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("SELECT id, first_name, last_name, specialization FROM dentists;")
+    # Pobieramy wszystkie pola opisane w sprawozdaniu [cite: 14-19]
+    cur.execute("SELECT id, first_name, last_name, specialization, email, phone_number FROM dentists;")
     res = cur.fetchall()
     cur.close(); conn.close()
     return res
@@ -227,12 +228,14 @@ def admin_get_all_appointments(admin=Depends(get_current_admin)):
     return res
 
 @app.post("/admin/dentists")
-def admin_add_dentist(first_name: str, last_name: str, specialization: str, admin=Depends(get_current_admin)):
+def admin_add_dentist(first_name: str, last_name: str, specialization: str, email: str, phone_number: str, admin=Depends(get_current_admin)):
     conn = get_db_connection()
     cur = conn.cursor()
     try:
-        cur.execute("INSERT INTO dentists (first_name, last_name, specialization) VALUES (%s, %s, %s);",
-                    (first_name, last_name, specialization))
+        cur.execute("""
+            INSERT INTO dentists (first_name, last_name, specialization, email, phone_number) 
+            VALUES (%s, %s, %s, %s, %s);
+        """, (first_name, last_name, specialization, email, phone_number))
         conn.commit()
         return {"message": f"Dodano lekarza: {last_name}"}
     except Exception as e:
