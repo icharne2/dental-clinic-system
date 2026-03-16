@@ -1,0 +1,62 @@
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    role VARCHAR(20) DEFAULT 'patient' 
+);
+
+CREATE TABLE dentists (
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    specialization VARCHAR(100),
+    email VARCHAR(100),
+    phone_number VARCHAR(20)
+);
+
+CREATE TABLE services (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    price DECIMAL(10, 2) NOT NULL
+);
+
+-- TABELA POŚREDNICZĄCA: Przypisuje zabiegi do lekarzy
+
+CREATE TABLE dentist_services (
+    dentist_id INTEGER REFERENCES dentists(id) ON DELETE CASCADE,
+    service_id INTEGER REFERENCES services(id) ON DELETE CASCADE,
+    PRIMARY KEY (dentist_id, service_id)
+);
+
+
+CREATE TABLE available_slots (
+    id SERIAL PRIMARY KEY,
+    dentist_id INTEGER REFERENCES dentists(id) ON DELETE CASCADE,
+    slot_date DATE NOT NULL,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    is_available BOOLEAN DEFAULT TRUE,
+    service_name VARCHAR(100)
+);
+
+CREATE TABLE appointments (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    dentist_id INTEGER REFERENCES dentists(id) ON DELETE CASCADE,
+    slot_id INTEGER REFERENCES available_slots(id) ON DELETE CASCADE,
+    status VARCHAR(20) DEFAULT 'booked',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+
+
+Po dodaniu admina na stronie zmień mu role:
+UPDATE users 
+SET role = 'admin' 
+WHERE email = 'admin@admin.com';
+
+
+
