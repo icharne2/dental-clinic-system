@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 
 export default function Home() {
   const [dentists, setDentists] = useState([]);
@@ -127,7 +128,17 @@ export default function Home() {
         {/* HEADER */}
         <header className="flex justify-between items-center bg-white p-8 rounded-[2rem] shadow-sm border border-slate-200">
           <div>
-            <h1 className="text-2xl font-black text-blue-900 uppercase tracking-tighter">DentalCare</h1>
+            {/* LOGO ZAMIAST TEKSTU */}
+            <div className="flex items-center mb-1">
+              <Image
+                src="/src/dentica.jpg"
+                alt="Dentica Logo"
+                width={200}
+                height={55}
+                priority
+                className="object-contain"
+              />
+            </div>
             <p className="text-sm text-slate-500">Witaj, <span className="font-bold text-blue-600">{userName}</span></p>
           </div>
           <div className="flex gap-3">

@@ -178,28 +178,34 @@ def get_appointments(user_id: int = Depends(get_current_user_id)):
     conn = get_db_connection()
     cur = conn.cursor()
     try:
-        # KLUCZOWY MOMENT: Czyścimy też stare ZAREZERWOWANE wizyty
-        # Usuwamy wizyty, których termin (w powiązanej tabeli slotów) już minął
+        # Pobieramy wizyty, łącząc je z lekarzem i slotem, żeby mieć komplet danych
         cur.execute("""
-            DELETE FROM appointments 
-            WHERE slot_id IN (SELECT id FROM available_slots WHERE slot_date < CURRENT_DATE);
-        """)
-        conn.commit()
-
-        cur.execute("""
-            SELECT a.id, a.slot_id, d.last_name as dentist_name, s.slot_date, s.start_time, a.status
+            SELECT 
+                a.id, 
+                a.slot_id, 
+                d.last_name as dentist_name, 
+                s.slot_date, 
+                s.start_time, 
+                a.status,
+                COALESCE(a.custom_service, s.service_name, 'Konsultacja') as service_name
             FROM appointments a
             JOIN dentists d ON a.dentist_id = d.id
             JOIN available_slots s ON a.slot_id = s.id
             WHERE a.user_id = %s
             ORDER BY s.slot_date ASC;
         """, (user_id,))
+
         res = cur.fetchall()
+
+        # Bardzo ważne: Konwersja dla JSONa
         for r in res:
-            r['slot_date'], r['start_time'] = str(r['slot_date']), str(r['start_time'])
+            r['slot_date'] = str(r['slot_date'])
+            r['start_time'] = str(r['start_time'])
+
         return res
     finally:
-        cur.close(); conn.close()
+        cur.close();
+        conn.close()
 
 @app.delete("/cancel/{appointment_id}/{slot_id}")
 def cancel_appointment(appointment_id: int, slot_id: int, user_id: int = Depends(get_current_user_id)):

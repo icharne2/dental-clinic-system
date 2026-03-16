@@ -75,7 +75,7 @@ export default function AuthPage() {
           <h1 className="text-3xl font-black text-blue-900 uppercase tracking-tighter">
             {isLogin ? 'Logowanie' : 'Rejestracja'}
           </h1>
-          <p className="text-slate-400 text-sm italic">System DentalCare</p>
+          <p className="text-slate-400 text-sm italic">System dentica</p>
         </header>
 
         <form onSubmit={handleAuth} className="space-y-4">
