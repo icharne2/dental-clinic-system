@@ -164,7 +164,7 @@ def book_appointment(slot_id: int, user_id: int = Depends(get_current_user_id)):
         cur.execute("UPDATE available_slots SET is_available = FALSE WHERE id = %s;", (slot_id,))
         cur.execute("""
             INSERT INTO appointments (user_id, dentist_id, slot_id, status, custom_service) 
-            VALUES (%s, %s, %s, 'booked', %s);
+            VALUES (%s, %s, %s, 'zarezerwowane', %s);
         """, (user_id, slot['dentist_id'], slot_id, slot.get('service_name', 'Konsultacja')))
 
         conn.commit()
