@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "DentalCare - System Rezerwacji",
+  title: "dentica",
   description: "System zarządzania wizytami w klinice stomatologicznej",
 };
 
