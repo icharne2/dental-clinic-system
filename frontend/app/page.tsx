@@ -4,6 +4,14 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 
 export default function Home() {
+  // --- STANY I POWIADOMIENIA (MUSZĄ BYĆ TUTAJ) ---
+  const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
+
+  const notify = (message: string, type: 'success' | 'error' = 'success') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 3000);
+  };
+
   const [dentists, setDentists] = useState([]);
   const [slots, setSlots] = useState([]);
   const [appointments, setAppointments] = useState([]);
@@ -11,16 +19,17 @@ export default function Home() {
   const [userRole, setUserRole] = useState('');
   const [selectedDentistId, setSelectedDentistId] = useState<number | null>(null);
 
-  // PAGINACJA LEKARZY
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const dentistsPerPage = 4;
 
-  // PAGINACJA TERMINÓW
   const [slotPage, setSlotPage] = useState(1);
   const slotsPerPage = 9;
 
   const router = useRouter();
+
+  // --- KOLOR DENTICA (#0A2EE2) ---
+  const denticaBlue = "#0A2EE2";
 
   const fetchData = async () => {
     const token = localStorage.getItem('token');
@@ -60,7 +69,6 @@ export default function Home() {
     setSlotPage(1);
   }, [selectedDentistId]);
 
-  // --- LOGIKA FILTROWANIA I PAGINACJI LEKARZY ---
   const searchedDentists = dentists.filter((d: any) =>
     `${d.first_name} ${d.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
     d.specialization.toLowerCase().includes(searchTerm.toLowerCase())
@@ -82,7 +90,6 @@ export default function Home() {
     setCurrentPage(1);
   };
 
-  // --- LOGIKA PAGINACJI TERMINÓW ---
   const selectedDentist = dentists.find((d: any) => Number(d.id) === Number(selectedDentistId));
   const filteredSlots = selectedDentistId
     ? slots.filter((s: any) => Number(s.dentist_id) === Number(selectedDentistId))
@@ -93,7 +100,6 @@ export default function Home() {
   const currentSlots = filteredSlots.slice(indexOfFirstSlot, indexOfLastSlot);
   const totalSlotPages = Math.ceil(filteredSlots.length / slotsPerPage);
 
-  // --- AKCJE ---
   const handleLogout = () => {
     localStorage.clear();
     router.push('/auth');
@@ -106,8 +112,10 @@ export default function Home() {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     if (res.ok) {
-      alert("Wizyta zarezerwowana!");
+      notify("Wizyta została pomyślnie zarezerwowana!", 'success');
       fetchData();
+    } else {
+      notify("Wystąpił błąd podczas rezerwacji.", 'error');
     }
   };
 
@@ -118,28 +126,32 @@ export default function Home() {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${token}` }
     });
-    if (res.ok) fetchData();
+    if (res.ok) {
+      notify("Anulowano wizytę.", 'success');
+      fetchData();
+    }
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 p-6 md:p-10 text-slate-900 font-sans">
+    <main className="min-h-screen bg-slate-50 p-6 md:p-10 text-slate-900 font-sans relative">
       <div className="max-w-7xl mx-auto space-y-10">
 
         {/* HEADER */}
         <header className="flex justify-between items-center bg-white p-8 rounded-[2rem] shadow-sm border border-slate-200">
           <div>
-            {/* LOGO ZAMIAST TEKSTU */}
             <div className="flex items-center mb-1">
               <Image
                 src="/src/dentica.jpg"
                 alt="Dentica Logo"
-                width={200}
-                height={55}
+                width={160}
+                height={50}
                 priority
                 className="object-contain"
               />
             </div>
-            <p className="text-sm text-slate-500">Witaj, <span className="font-bold text-blue-600">{userName}</span></p>
+            <p className="text-sm text-slate-500">
+              Witaj, <span className="font-bold" style={{ color: denticaBlue }}>{userName}</span>
+            </p>
           </div>
           <div className="flex gap-3">
             {userRole === 'admin' && (
@@ -154,22 +166,20 @@ export default function Home() {
         </header>
 
         <div className="grid gap-10 lg:grid-cols-3">
-
-          {/* KOLUMNA LEWA: LEKARZE */}
+          {/* LEWA KOLUMNA: LEKARZE */}
           <section className="space-y-4">
             <div className="flex flex-col gap-4 mb-2">
               <div className="flex justify-between items-center">
                 <h2 className="text-xl font-bold flex items-center gap-2 text-slate-800">
-                  <span className="w-1.5 h-6 bg-blue-600 rounded-full"></span>
+                  <span className="w-1.5 h-6 rounded-full" style={{ backgroundColor: denticaBlue }}></span>
                   Nasi Lekarze
                 </h2>
                 {(searchTerm || selectedDentistId) && (
-                  <button onClick={resetFilters} className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline">
+                  <button onClick={resetFilters} className="text-[10px] font-black uppercase tracking-widest hover:underline" style={{ color: denticaBlue }}>
                     Wyczyść filtry
                   </button>
                 )}
               </div>
-
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 opacity-30">🔍</span>
                 <input
@@ -188,11 +198,12 @@ export default function Home() {
                   key={d.id}
                   onClick={() => setSelectedDentistId(d.id === selectedDentistId ? null : d.id)}
                   className={`w-full text-left p-6 rounded-[2rem] border transition-all shadow-sm ${
-                    selectedDentistId === d.id ? 'border-blue-600 bg-blue-50 ring-4 ring-blue-100/50' : 'border-white bg-white hover:border-blue-400'
+                    selectedDentistId === d.id ? 'bg-blue-50 ring-4 ring-blue-100/50' : 'border-white bg-white hover:border-blue-400'
                   }`}
+                  style={selectedDentistId === d.id ? { borderColor: denticaBlue } : {}}
                 >
                   <p className="font-bold text-lg text-slate-800">lek. {d.first_name} {d.last_name}</p>
-                  <p className="text-blue-500 text-[9px] font-black uppercase tracking-widest mb-4">{d.specialization}</p>
+                  <p className="text-[9px] font-black uppercase tracking-widest mb-4" style={{ color: denticaBlue }}>{d.specialization}</p>
                   <div className="space-y-1 opacity-60 text-[11px]">
                     <p>📧 {d.email || 'brak'}</p>
                     <p>📞 {d.phone_number || 'brak'}</p>
@@ -203,17 +214,16 @@ export default function Home() {
               )}
             </div>
 
-            {/* POPRAWIONY PASEK PAGINACJI LEKARZY */}
             {totalPages > 1 && (
               <div className="flex justify-between items-center p-4 bg-white/50 rounded-[2rem] border border-slate-200 shadow-sm">
-                <button disabled={currentPage === 1} onClick={() => setCurrentPage(prev => prev - 1)} className="text-[10px] font-black uppercase tracking-widest disabled:opacity-20 hover:text-blue-600 transition-all">← Poprzedni</button>
+                <button disabled={currentPage === 1} onClick={() => setCurrentPage(prev => prev - 1)} className="text-[10px] font-black uppercase tracking-widest disabled:opacity-20 transition-all hover:text-blue-600">← Poprzedni</button>
                 <span className="text-[10px] font-bold text-slate-500">Strona {currentPage} z {totalPages}</span>
-                <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(prev => prev + 1)} className="text-[10px] font-black uppercase tracking-widest disabled:opacity-20 hover:text-blue-600 transition-all">Następny →</button>
+                <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(prev => prev + 1)} className="text-[10px] font-black uppercase tracking-widest disabled:opacity-20 transition-all hover:text-blue-600">Następny →</button>
               </div>
             )}
           </section>
 
-          {/* KOLUMNA PRAWA: ZABIEGI I TERMINY */}
+          {/* PRAWA KOLUMNA: TERMINY */}
           <section className="lg:col-span-2 space-y-8">
             <div className="space-y-4">
               <h2 className="text-xl font-bold flex items-center gap-2 text-slate-800">
@@ -225,7 +235,7 @@ export default function Home() {
                   selectedDentist.services.map((s: any, idx: number) => (
                     <div key={idx} className="bg-white p-5 rounded-3xl border border-blue-50 shadow-sm flex justify-between items-center">
                       <span className="text-sm font-bold text-slate-800">{s.name}</span>
-                      <span className="text-sm font-black text-blue-600">{s.price} zł</span>
+                      <span className="text-sm font-black" style={{ color: denticaBlue }}>{s.price} zł</span>
                     </div>
                   ))
                 ) : (
@@ -264,16 +274,9 @@ export default function Home() {
                 )}
               </div>
 
-              {/* POPRAWIONY PASEK PAGINACJI TERMINÓW (Z KOŁAMI) */}
               {totalSlotPages > 1 && (
                 <div className="flex justify-between items-center p-4 bg-white/50 rounded-[2rem] border border-slate-200 shadow-sm mt-6">
-                  <button
-                    disabled={slotPage === 1}
-                    onClick={() => setSlotPage(prev => prev - 1)}
-                    className="text-[10px] font-black uppercase tracking-widest disabled:opacity-20 hover:text-emerald-600 transition-all"
-                  >
-                    ← Poprzednie
-                  </button>
+                  <button disabled={slotPage === 1} onClick={() => setSlotPage(prev => prev - 1)} className="text-[10px] font-black uppercase tracking-widest disabled:opacity-20 hover:text-emerald-600 transition-all">← Poprzednie</button>
                   <div className="flex gap-2">
                     {[...Array(totalSlotPages)].map((_, i) => (
                       <button
@@ -287,13 +290,7 @@ export default function Home() {
                       </button>
                     ))}
                   </div>
-                  <button
-                    disabled={slotPage === totalSlotPages}
-                    onClick={() => setSlotPage(prev => prev + 1)}
-                    className="text-[10px] font-black uppercase tracking-widest disabled:opacity-20 hover:text-emerald-600 transition-all"
-                  >
-                    Dalsze →
-                  </button>
+                  <button disabled={slotPage === totalSlotPages} onClick={() => setSlotPage(prev => prev + 1)} className="text-[10px] font-black uppercase tracking-widest disabled:opacity-20 hover:text-emerald-600 transition-all">Dalsze →</button>
                 </div>
               )}
             </div>
@@ -304,7 +301,7 @@ export default function Home() {
         <section className="space-y-6 pt-10 pb-20">
           <h2 className="text-2xl font-black text-slate-800 flex items-center gap-3">
             Twoje Zaplanowane Wizyty
-            <span className="bg-blue-600 text-white text-xs py-1 px-3 rounded-full">{appointments.length}</span>
+            <span className="text-white text-xs py-1 px-3 rounded-full" style={{ backgroundColor: denticaBlue }}>{appointments.length}</span>
           </h2>
           <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-200 overflow-hidden">
             <table className="w-full text-left">
@@ -321,7 +318,9 @@ export default function Home() {
                   <tr key={a.id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="px-10 py-6 font-bold text-slate-800">lek. {a.dentist_name}</td>
                     <td className="px-10 py-6 text-slate-600 text-sm font-medium">{a.slot_date} | {a.start_time?.slice(0,5)}</td>
-                    <td className="px-10 py-6"><span className="bg-blue-50 text-blue-600 px-4 py-1.5 rounded-full text-[9px] font-black uppercase">{a.status}</span></td>
+                    <td className="px-10 py-6">
+                      <span className="bg-blue-50 px-4 py-1.5 rounded-full text-[9px] font-black uppercase" style={{ color: denticaBlue }}>{a.status}</span>
+                    </td>
                     <td className="px-10 py-6 text-right">
                       <button onClick={() => cancelAppointment(a.id, a.slot_id)} className="text-red-400 hover:text-red-600 font-black text-[10px] uppercase tracking-widest transition-colors">Anuluj</button>
                     </td>
@@ -332,6 +331,24 @@ export default function Home() {
           </div>
         </section>
       </div>
+
+      {/* --- UI POWIADOMIENIA (TOAST) --- */}
+      {notification && (
+        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] animate-bounce-in">
+          <div className={`
+            px-8 py-4 rounded-[2rem] shadow-2xl border flex items-center gap-3 backdrop-blur-md
+            ${notification.type === 'success'
+              ? 'bg-emerald-500/90 border-emerald-400 text-white'
+              : 'bg-red-500/90 border-red-400 text-white'}
+          `}>
+            <span className="text-xl">
+            </span>
+            <p className="font-black uppercase text-[10px] tracking-widest">
+              {notification.message}
+            </p>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
