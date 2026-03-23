@@ -4,7 +4,7 @@ CREATE TABLE users (
     last_name VARCHAR(50) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
-    role VARCHAR(20) DEFAULT 'patient' 
+    role VARCHAR(20) DEFAULT 'patient'
 );
 
 CREATE TABLE dentists (
@@ -45,13 +45,19 @@ CREATE TABLE appointments (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     dentist_id INTEGER REFERENCES dentists(id) ON DELETE CASCADE,
-    slot_id INTEGER REFERENCES available_slots(id) ON DELETE CASCADE,
+    slot_id INTEGER UNIQUE REFERENCES available_slots(id) ON DELETE CASCADE, -- <--- DODANE SŁOWO 'UNIQUE'
     status VARCHAR(20) DEFAULT 'booked',
     custom_service VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-
+CREATE TABLE notifications (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    message TEXT NOT NULL,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
 Po dodaniu admina na stronie zmień mu role:
 UPDATE users 
@@ -65,54 +71,137 @@ SET client_encoding = 'WIN1250';
 
 Dodanie lekarzy
 INSERT INTO dentists (first_name, last_name, specialization, email, phone_number) VALUES
-('Marcin', 'Nowak', 'Stomatologia zachowawcza', 'm.nowak@dentica.pl', '555-111-222'),
-('Karolina', 'Wysocka', 'Ortodoncja', 'k.wysocka@dentica.pl', '555-333-444'),
-('Jakub', 'Zielinski', 'Chirurgia stomatologiczna', 'j.zielinski@dentica.pl', '555-555-666'),
-('Anna', 'Wisniewska', 'Stomatologia dziecieca', 'a.wisniewska@dentica.pl', '555-777-888'),
-('Robert', 'Borkowski', 'Protetyka i implantologia', 'r.borkowski@dentica.pl', '555-999-000');
-
+('Anna', 'Kowalska', 'stomatologia zachowawcza', 'anna.kowalska@dentica.pl', '500100101'),
+('Michał', 'Nowak', 'endodoncja', 'michal.nowak@dentica.pl', '500100102'),
+('Katarzyna', 'Wiśniewska', 'ortodoncja', 'katarzyna.wisniewska@dentica.pl', '500100103'),
+('Tomasz', 'Zieliński', 'chirurgia stomatologiczna', 'tomasz.zielinski@dentica.pl', '500100104'),
+('Magdalena', 'Wójcik', 'protetyka', 'magdalena.wojcik@dentica.pl', '500100105'),
+('Piotr', 'Kamiński', 'implantologia', 'piotr.kaminski@dentica.pl', '500100106'),
+('Joanna', 'Lewandowska', 'periodontologia', 'joanna.lewandowska@dentica.pl', '500100107'),
+('Aleksandra', 'Dąbrowska', 'stomatologia dziecięca', 'aleksandra.dabrowska@dentica.pl', '500100108');
 
 
 Dodanie zabiegow
 INSERT INTO services (name, price) VALUES
-('Przeglad i czyszczenie', 150.00),
-('Wypelnienie kompozytowe', 250.00),
-('Leczenie kanalowe', 850.00),
-('Ekstrakcja zeba', 300.00),
-('Aparat staly (metalowy)', 2800.00),
-('Implant stomatologiczny', 3500.00),
-('Wybielanie zebow', 1200.00);
+
+-- STOMATOLOGIA ZACHOWAWCZA
+('Przegląd stomatologiczny', 100.00),
+('Higienizacja (skaling + piaskowanie + fluoryzacja)', 350.00),
+('Wypełnienie kompozytowe małe', 220.00),
+('Wypełnienie kompozytowe średnie', 260.00),
+('Wypełnienie kompozytowe duże', 320.00),
+('Odbudowa zęba', 400.00),
+
+-- ENDODONCJA
+('Leczenie kanałowe jednokanałowe', 600.00),
+('Leczenie kanałowe dwukanałowe', 800.00),
+('Leczenie kanałowe wielokanałowe', 1000.00),
+('Powtórne leczenie kanałowe (re-endo)', 1200.00),
+
+-- CHIRURGIA STOMATOLOGICZNA
+('Ekstrakcja zęba', 300.00),
+('Ekstrakcja chirurgiczna (ósemki)', 600.00),
+('Resekcja wierzchołka korzenia', 700.00),
+('Nacięcie ropnia', 250.00),
+
+-- ORTODONCJA
+('Konsultacja ortodontyczna', 150.00),
+('Aparat stały (metalowy) - jeden łuk', 2800.00),
+('Aparat estetyczny (ceramiczny)', 3500.00),
+('Alignery (nakładki ortodontyczne)', 8000.00),
+
+-- PROTETYKA
+('Korona porcelanowa', 1500.00),
+('Most protetyczny (za punkt)', 1200.00),
+('Proteza akrylowa', 1800.00),
+('Licówki porcelanowe', 2000.00),
+
+-- IMPLANTOLOGIA
+('Implant stomatologiczny (wszczepienie)', 3500.00),
+('Korona na implancie', 2500.00),
+('Podniesienie dna zatoki', 2000.00),
+
+-- PERIODONTOLOGIA
+('Kiretaż zamknięty', 400.00),
+('Kiretaż otwarty', 800.00),
+('Leczenie zapalenia dziąseł', 300.00),
+
+-- STOMATOLOGIA DZIECIĘCA
+('Wizyta adaptacyjna dziecka', 100.00),
+('Lakowanie zębów', 150.00),
+('Leczenie zęba mlecznego', 200.00);
 
 Przypisanie zabiegow do lekarzy
--- Marcin Nowak (ID 1) robi przeglądy, wypełnienia i kanałowe
-INSERT INTO dentist_services (dentist_id, service_id) VALUES (1, 1), (1, 2), (1, 3);
+INSERT INTO dentist_services (dentist_id, service_id) VALUES
 
--- Karolina Wysocka (ID 2) robi tylko aparaty (Ortodoncja)
-INSERT INTO dentist_services (dentist_id, service_id) VALUES (2, 5);
+-- 1. Anna Kowalska - stomatologia zachowawcza
+(1, 1), -- Przegląd stomatologiczny
+(1, 2), -- Higienizacja
+(1, 3), -- Wypełnienie małe
+(1, 4), -- Wypełnienie średnie
+(1, 5), -- Wypełnienie duże
+(1, 6), -- Odbudowa zęba
 
--- Jakub Zieliński (ID 3) robi ekstrakcje (Chirurgia)
-INSERT INTO dentist_services (dentist_id, service_id) VALUES (3, 4);
+-- 2. Michał Nowak - endodoncja
+(2, 7),  -- Leczenie kanałowe jednokanałowe
+(2, 8),  -- Leczenie kanałowe dwukanałowe
+(2, 9),  -- Leczenie kanałowe wielokanałowe
+(2, 10), -- Re-endo
 
--- Anna Wiśniewska (ID 4) robi przeglądy i wypełnienia dla dzieci
-INSERT INTO dentist_services (dentist_id, service_id) VALUES (4, 1), (4, 2);
+-- 3. Katarzyna Wiśniewska - ortodoncja
+(3, 15), -- Konsultacja ortodontyczna
+(3, 16), -- Aparat stały metalowy
+(3, 17), -- Aparat estetyczny
+(3, 18), -- Alignery
 
--- Robert Borkowski (ID 5) robi implanty i wybielanie
-INSERT INTO dentist_services (dentist_id, service_id) VALUES (5, 6), (5, 7);
+-- 4. Tomasz Zieliński - chirurgia stomatologiczna
+(4, 11), -- Ekstrakcja zęba
+(4, 12), -- Ekstrakcja chirurgiczna ósemki
+(4, 13), -- Resekcja wierzchołka korzenia
+(4, 14), -- Nacięcie ropnia
+
+-- 5. Magdalena Wójcik - protetyka
+(5, 19), -- Korona porcelanowa
+(5, 20), -- Most protetyczny
+(5, 21), -- Proteza akrylowa
+(5, 22), -- Licówki porcelanowe
+
+-- 6. Piotr Kamiński - implantologia
+(6, 23), -- Implant stomatologiczny
+(6, 24), -- Korona na implancie
+(6, 25), -- Podniesienie dna zatoki
+
+-- 7. Joanna Lewandowska - periodontologia
+(7, 26), -- Kiretaż zamknięty
+(7, 27), -- Kiretaż otwarty
+(7, 28), -- Leczenie zapalenia dziąseł
+
+-- 8. Aleksandra Dąbrowska - stomatologia dziecięca
+(8, 29), -- Wizyta adaptacyjna dziecka
+(8, 30), -- Lakowanie zębów
+(8, 31); -- Leczenie zęba mlecznego
 
 
-
-Dodatnie terminow - 20
+Dodatnie terminow - do poprawki
 INSERT INTO available_slots (dentist_id, slot_date, start_time, end_time, is_available, service_name)
 SELECT
     d.id,
-    CURRENT_DATE + (i || ' day')::interval,
-    '09:00:00'::time + (j || ' hour')::interval,
-    '09:30:00'::time + (j || ' hour')::interval,
+    CURRENT_DATE + i,
+    ('09:00:00'::time + (j * INTERVAL '1 hour'))::time,
+    ('09:30:00'::time + (j * INTERVAL '1 hour'))::time,
     TRUE,
-    'Konsultacja'
-FROM
-    dentists d,
-    generate_series(1, 4) i,
-    generate_series(0, 4) j
-LIMIT 20;
+    CASE
+        WHEN d.specialization = 'stomatologia zachowawcza' THEN 'Przegląd stomatologiczny'
+        WHEN d.specialization = 'endodoncja' THEN 'Leczenie kanałowe jednokanałowe'
+        WHEN d.specialization = 'ortodoncja' THEN 'Konsultacja ortodontyczna'
+        WHEN d.specialization = 'chirurgia stomatologiczna' THEN 'Ekstrakcja zęba'
+        WHEN d.specialization = 'protetyka' THEN 'Korona porcelanowa'
+        WHEN d.specialization = 'implantologia' THEN 'Implant stomatologiczny (wszczepienie)'
+        WHEN d.specialization = 'periodontologia' THEN 'Leczenie zapalenia dziąseł'
+        WHEN d.specialization = 'stomatologia dziecięca' THEN 'Wizyta adaptacyjna dziecka'
+        ELSE 'Konsultacja'
+    END
+FROM dentists d
+CROSS JOIN generate_series(1, 4) AS i
+CROSS JOIN generate_series(0, 4) AS j;
 

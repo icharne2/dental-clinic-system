@@ -69,7 +69,6 @@ class SlotCreate(BaseModel):
     dentist_id: int
     slot_date: str
     start_time: str
-    # service_id jest teraz opcjonalny - domyślnie "Konsultacja"
     service_id: Optional[str] = "Konsultacja"
 
 
@@ -112,7 +111,6 @@ def get_current_admin(authorization: Optional[str] = Header(None)):
 def get_dentists():
     conn = get_db_connection()
     cur = conn.cursor()
-    # Pobieranie lekarzy wraz z ich stałymi usługami z cennika (json_agg)
     query = """
         SELECT d.id, d.first_name, d.last_name, d.specialization, d.email, d.phone_number,
         COALESCE((SELECT json_agg(json_build_object('id', s.id, 'name', s.name, 'price', s.price))
@@ -132,15 +130,17 @@ def get_slots():
     conn = get_db_connection()
     cur = conn.cursor()
     try:
-        # Usuwamy stare terminy (z tabeli slotów)
+        # Usuwamy stare dni
         cur.execute("DELETE FROM available_slots WHERE slot_date < CURRENT_DATE;")
         conn.commit()
 
+        # Pobieramy tylko te, które są faktycznie w przyszłości (dzień + godzina)
         cur.execute("""
             SELECT s.id, s.slot_date, s.start_time, s.dentist_id, d.last_name as dentist_name, 
                    COALESCE(s.service_name, 'Konsultacja') as type
             FROM available_slots s JOIN dentists d ON s.dentist_id = d.id
-            WHERE s.is_available = TRUE
+            WHERE s.is_available = TRUE 
+            AND (s.slot_date > CURRENT_DATE OR (s.slot_date = CURRENT_DATE AND s.start_time > CURRENT_TIME))
             ORDER BY s.slot_date ASC, s.start_time ASC;
         """)
         res = cur.fetchall()
@@ -159,7 +159,7 @@ def book_appointment(slot_id: int, user_id: int = Depends(get_current_user_id)):
         cur.execute("SELECT dentist_id, service_name FROM available_slots WHERE id = %s AND is_available = TRUE;",
                     (slot_id,))
         slot = cur.fetchone()
-        if not slot: return {"error": "Zajęte"}
+        if not slot: raise HTTPException(status_code=400, detail="Zajęte")
 
         cur.execute("UPDATE available_slots SET is_available = FALSE WHERE id = %s;", (slot_id,))
         cur.execute("""
@@ -178,34 +178,27 @@ def get_appointments(user_id: int = Depends(get_current_user_id)):
     conn = get_db_connection()
     cur = conn.cursor()
     try:
-        # Pobieramy wizyty, łącząc je z lekarzem i slotem, żeby mieć komplet danych
+        # Pacjent widzi tylko NADCHODZĄCE (dzisiejsze z ranną godziną znikają)
         cur.execute("""
             SELECT 
-                a.id, 
-                a.slot_id, 
-                d.last_name as dentist_name, 
-                s.slot_date, 
-                s.start_time, 
-                a.status,
+                a.id, a.slot_id, d.last_name as dentist_name, 
+                s.slot_date, s.start_time, a.status,
                 COALESCE(a.custom_service, s.service_name, 'Konsultacja') as service_name
             FROM appointments a
             JOIN dentists d ON a.dentist_id = d.id
             JOIN available_slots s ON a.slot_id = s.id
-            WHERE a.user_id = %s
-            ORDER BY s.slot_date ASC;
+            WHERE a.user_id = %s 
+            AND (s.slot_date > CURRENT_DATE OR (s.slot_date = CURRENT_DATE AND s.start_time >= CURRENT_TIME))
+            ORDER BY s.slot_date ASC, s.start_time ASC;
         """, (user_id,))
 
         res = cur.fetchall()
-
-        # Bardzo ważne: Konwersja dla JSONa
         for r in res:
             r['slot_date'] = str(r['slot_date'])
             r['start_time'] = str(r['start_time'])
-
         return res
     finally:
-        cur.close();
-        conn.close()
+        cur.close(); conn.close()
 
 @app.delete("/cancel/{appointment_id}/{slot_id}")
 def cancel_appointment(appointment_id: int, slot_id: int, user_id: int = Depends(get_current_user_id)):
@@ -245,15 +238,12 @@ def admin_add_slot(slot: SlotCreate, admin=Depends(get_current_admin)):
     conn = get_db_connection()
     cur = conn.cursor()
     try:
-        # --- WALIDACJA DATY ---
-        # Łączymy datę i czas w jeden obiekt, żeby porównać z "teraz"
         try:
             slot_dt = datetime.strptime(f"{slot.slot_date} {slot.start_time}", "%Y-%m-%d %H:%M")
             if slot_dt < datetime.now():
                 raise HTTPException(status_code=400, detail="Nie można dodać terminu w przeszłości.")
         except ValueError:
             raise HTTPException(status_code=400, detail="Nieprawidłowy format daty lub godziny.")
-        # ---------------------------
 
         cur.execute("""
             INSERT INTO available_slots (dentist_id, slot_date, start_time, end_time, is_available, service_name) 
@@ -299,19 +289,12 @@ def admin_delete_service(service_id: int, admin=Depends(get_current_admin)):
     finally:
         cur.close(); conn.close()
 
-
 @app.get("/admin/appointments")
 def admin_get_all(admin=Depends(get_current_admin)):
     conn = get_db_connection()
     cur = conn.cursor()
     try:
-        # Admin też sprząta przy okazji zaglądania do wizyt
-        cur.execute("""
-            DELETE FROM appointments 
-            WHERE slot_id IN (SELECT id FROM available_slots WHERE slot_date < CURRENT_DATE);
-        """)
-        conn.commit()
-
+        # Admin widzi wszystko (Historia + Nadchodzące)
         cur.execute("""
             SELECT a.id, a.slot_id, (u.first_name || ' ' || u.last_name) as patient_name, d.last_name as dentist_name, 
                    s.slot_date, s.start_time, a.status, COALESCE(a.custom_service, s.service_name, 'Konsultacja') as service_name
@@ -319,7 +302,7 @@ def admin_get_all(admin=Depends(get_current_admin)):
             JOIN users u ON a.user_id = u.id
             JOIN dentists d ON a.dentist_id = d.id
             JOIN available_slots s ON a.slot_id = s.id
-            ORDER BY s.slot_date ASC;
+            ORDER BY s.slot_date DESC, s.start_time DESC;
         """)
         res = cur.fetchall()
         for r in res:
@@ -347,26 +330,17 @@ def admin_delete_dentist(dentist_id: int, admin=Depends(get_current_admin)):
     conn = get_db_connection()
     cur = conn.cursor()
     try:
-        # 1. Usuwamy wizyty powiązane z tym lekarzem
         cur.execute("DELETE FROM appointments WHERE dentist_id = %s;", (dentist_id,))
-
-        # 2. Usuwamy wszystkie sloty (terminy) tego lekarza
         cur.execute("DELETE FROM available_slots WHERE dentist_id = %s;", (dentist_id,))
-
-        # 3. Usuwamy powiązania lekarza z usługami (cennik)
         cur.execute("DELETE FROM dentist_services WHERE dentist_id = %s;", (dentist_id,))
-
-        # 4. Na samym końcu usuwamy samego lekarza
         cur.execute("DELETE FROM dentists WHERE id = %s;", (dentist_id,))
-
         conn.commit()
-        return {"message": "Lekarz oraz wszystkie powiązane dane zostały usunięte."}
+        return {"message": "OK"}
     except Exception as e:
         conn.rollback()
-        raise HTTPException(status_code=400, detail=f"Błąd podczas usuwania: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
     finally:
-        cur.close()
-        conn.close()
+        cur.close(); conn.close()
 
 @app.post("/login")
 def login(login_data: UserLogin):
@@ -385,27 +359,14 @@ def register(user: UserRegister):
     conn = get_db_connection()
     cur = conn.cursor()
     try:
-        # 1. Sprawdzamy, czy użytkownik o takim mailu już istnieje
         cur.execute("SELECT id FROM users WHERE email = %s;", (user.email.strip(),))
-        if cur.fetchone():
-            raise HTTPException(status_code=400, detail="Użytkownik o tym adresie e-mail już istnieje.")
-
-        # 2. Haszujemy hasło przed zapisem
+        if cur.fetchone(): raise HTTPException(status_code=400, detail="Email zajęty")
         salt = bcrypt.gensalt()
         hashed_password = bcrypt.hashpw(user.password.encode('utf-8'), salt).decode('utf-8')
-
-        # 3. Dodajemy użytkownika do bazy (domyślnie jako 'patient')
-        cur.execute("""
-            INSERT INTO users (first_name, last_name, email, password_hash, role)
-            VALUES (%s, %s, %s, %s, 'patient')
-        """, (user.first_name, user.last_name, user.email.strip(), hashed_password))
-
+        cur.execute("INSERT INTO users (first_name, last_name, email, password_hash, role) VALUES (%s, %s, %s, %s, 'patient')",
+                    (user.first_name, user.last_name, user.email.strip(), hashed_password))
         conn.commit()
-        return {"message": "Konto utworzone pomyślnie!"}
-
+        return {"message": "OK"}
     except Exception as e:
-        conn.rollback()
-        raise HTTPException(status_code=400, detail=str(e))
-    finally:
-        cur.close()
-        conn.close()
+        conn.rollback(); raise HTTPException(status_code=400, detail=str(e))
+    finally: cur.close(); conn.close()
