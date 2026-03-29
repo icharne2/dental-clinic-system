@@ -24,8 +24,15 @@ export default function DashboardPage() {
   const [selectedServiceName, setSelectedServiceName] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
+  // --- STANY PAGINACJI ---
   const [dentistPage, setDentistPage] = useState(1);
   const dentistsPerPage = 4;
+
+  const [slotPage, setSlotPage] = useState(1);
+  const slotsPerPage = 6; // Pokazuje 6 kafelków terminów (2 rzędy po 3)
+
+  const [appPage, setAppPage] = useState(1);
+  const appsPerPage = 5; // Pokazuje 5 wizyt w tabeli
 
   const router = useRouter();
   const denticaBlue = "#0A2EE2";
@@ -69,13 +76,16 @@ export default function DashboardPage() {
     }
   }, [router]);
 
+  // RESET FILTRÓW (zeruje też paginację)
   const handleResetFilters = () => {
     setSearchTerm("");
     setSelectedDentistId(null);
     setSelectedServiceName(null);
     setDentistPage(1);
+    setSlotPage(1);
   };
 
+  // --- LOGIKA PAGINACJI: LEKARZE ---
   const searchedDentists = useMemo(() => {
     return dentists.filter((d: any) => {
       const fullName = `${d.first_name} ${d.last_name}`.toLowerCase();
@@ -86,6 +96,7 @@ export default function DashboardPage() {
   const currentDentists = searchedDentists.slice((dentistPage - 1) * dentistsPerPage, dentistPage * dentistsPerPage);
   const totalDentistPages = Math.ceil(searchedDentists.length / dentistsPerPage);
 
+  // --- LOGIKA PAGINACJI: WOLNE TERMINY (SLOTY) ---
   const filteredSlots = useMemo(() => {
     if (!selectedDentistId || !selectedServiceName) return [];
     const now = new Date();
@@ -97,6 +108,14 @@ export default function DashboardPage() {
     });
   }, [slots, selectedDentistId, selectedServiceName]);
 
+  const currentSlots = filteredSlots.slice((slotPage - 1) * slotsPerPage, slotPage * slotsPerPage);
+  const totalSlotPages = Math.ceil(filteredSlots.length / slotsPerPage);
+
+  // --- LOGIKA PAGINACJI: ZAREZERWOWANE WIZYTY ---
+  const currentApps = appointments.slice((appPage - 1) * appsPerPage, appPage * appsPerPage);
+  const totalAppPages = Math.ceil(appointments.length / appsPerPage);
+
+  // --- AKCJE ---
   const proceedWithBooking = async () => {
     if (!slotToBook) return;
     const res = await fetch(`http://127.0.0.1:8000/book/${slotToBook}`, {
@@ -119,6 +138,7 @@ export default function DashboardPage() {
 
   return (
     <main className="min-h-screen bg-[#F8FAFC] font-sans text-slate-900 pb-20 selection:bg-blue-600">
+      {/* HEADER */}
       <header className="bg-white/80 backdrop-blur-md sticky top-0 z-[100] border-b border-slate-100">
         <div className="max-w-[1600px] mx-auto px-6 lg:px-12 py-5 flex justify-between items-center">
           <div className="flex items-center gap-4">
@@ -150,6 +170,7 @@ export default function DashboardPage() {
         </motion.section>
 
         <div className="grid lg:grid-cols-12 gap-10">
+          {/* SEKCJA LEKARZY */}
           <section className="lg:col-span-4 space-y-6">
             <div className="flex justify-between items-center px-2">
               <h3 className="text-xl font-black uppercase tracking-tight flex items-center gap-3 text-slate-900"><Stethoscope className="text-blue-600" /> Nasi Eksperci</h3>
@@ -161,9 +182,18 @@ export default function DashboardPage() {
               <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 w-5 h-5" />
               <input type="text" placeholder="Szukaj specjalisty..." className="w-full bg-white border border-slate-100 p-5 pl-14 rounded-[2rem] text-sm font-bold outline-none focus:ring-4 focus:ring-blue-100/30 transition-all shadow-sm" value={searchTerm} onChange={(e) => {setSearchTerm(e.target.value); setDentistPage(1);}} />
             </div>
+
             <div className="space-y-4">
               {currentDentists.map((d: any) => (
-                <button key={d.id} onClick={() => {setSelectedDentistId(d.id); setSelectedServiceName(null);}} className={`w-full text-left p-6 rounded-[2.5rem] border transition-all flex items-center gap-5 ${selectedDentistId === d.id ? "bg-blue-600 border-blue-600 text-white shadow-xl" : "bg-white border-slate-100 hover:border-blue-400"}`}>
+                <button
+                  key={d.id}
+                  onClick={() => {
+                    setSelectedDentistId(d.id);
+                    setSelectedServiceName(null);
+                    setSlotPage(1); // Resetuje strony terminów
+                  }}
+                  className={`w-full text-left p-6 rounded-[2.5rem] border transition-all flex items-center gap-5 ${selectedDentistId === d.id ? "bg-blue-600 border-blue-600 text-white shadow-xl" : "bg-white border-slate-100 hover:border-blue-400"}`}
+                >
                   <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black text-xl ${selectedDentistId === d.id ? "bg-white/20" : "bg-blue-50 text-blue-600"}`}>{d.first_name[0]}{d.last_name[0]}</div>
                   <div className="flex-1 uppercase leading-tight">
                     <p className={`text-[9px] font-black uppercase tracking-widest mb-1 ${selectedDentistId === d.id ? "text-blue-100" : "text-blue-600"}`}>{d.specialization}</p>
@@ -173,7 +203,7 @@ export default function DashboardPage() {
                 </button>
               ))}
 
-              {/* SEKACJA PAGINACJI LEKARZY */}
+              {/* PAGINACJA LEKARZY */}
               {totalDentistPages > 1 && (
                 <div className="flex justify-center items-center gap-4 mt-8 py-4">
                   <button
@@ -183,11 +213,9 @@ export default function DashboardPage() {
                   >
                     <ChevronLeft size={20} />
                   </button>
-
                   <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                     {dentistPage} / {totalDentistPages}
                   </span>
-
                   <button
                     disabled={dentistPage === totalDentistPages}
                     onClick={() => setDentistPage(prev => Math.min(prev + 1, totalDentistPages))}
@@ -201,12 +229,20 @@ export default function DashboardPage() {
           </section>
 
           <section className="lg:col-span-8 space-y-10">
+            {/* SEKCJA USŁUG */}
             <div className="space-y-6">
               <h3 className="text-xl font-black uppercase tracking-tight px-2 flex items-center gap-3 text-slate-900"><Activity className="text-blue-600" /> Rodzaj usługi</h3>
               <div className="grid sm:grid-cols-2 gap-4">
                 {selectedDentistId ? (
                    dentists.find(d => d.id === selectedDentistId)?.services?.map((s: any, idx: number) => (
-                    <button key={idx} onClick={() => setSelectedServiceName(s.name)} className={`p-6 rounded-[2rem] border text-left transition-all flex justify-between items-center ${selectedServiceName === s.name ? "bg-blue-600 border-blue-600 text-white shadow-lg" : "bg-white border-slate-100 hover:border-blue-400 shadow-sm"}`}>
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        setSelectedServiceName(s.name);
+                        setSlotPage(1); // Resetuje strony terminów
+                      }}
+                      className={`p-6 rounded-[2rem] border text-left transition-all flex justify-between items-center ${selectedServiceName === s.name ? "bg-blue-600 border-blue-600 text-white shadow-lg" : "bg-white border-slate-100 hover:border-blue-400 shadow-sm"}`}
+                    >
                       <span className="font-bold text-sm tracking-tight uppercase leading-none">{s.name}</span>
                       <span className={`text-sm font-black ${selectedServiceName === s.name ? "text-white" : "text-blue-600"}`}>{s.price} zł</span>
                     </button>
@@ -214,10 +250,13 @@ export default function DashboardPage() {
                 ) : ( <div className="col-span-full p-12 bg-white rounded-[3rem] border border-dashed border-slate-200 text-center text-slate-400 font-medium italic flex flex-col items-center gap-2 uppercase tracking-widest text-[10px]">Wybierz lekarza z listy.</div> )}
               </div>
             </div>
+
+            {/* SEKCJA TERMINÓW */}
             <div className="space-y-6">
               <h3 className="text-xl font-black uppercase tracking-tight px-2 flex items-center gap-3 text-slate-900"><Clock className="text-emerald-500" /> Dostępne terminy</h3>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-                {filteredSlots.length > 0 ? filteredSlots.map((s: any) => (
+                {currentSlots.length > 0 ? currentSlots.map((s: any) => (
                   <motion.button whileHover={{ scale: 1.03 }} key={s.id} onClick={() => {setSlotToBook(s.id); setShowConfirmBook(true);}} className="bg-white border border-slate-100 p-8 rounded-[2.5rem] text-left hover:border-emerald-400 hover:shadow-xl transition-all shadow-sm group">
                     <div className="text-[9px] font-black uppercase text-emerald-500 tracking-widest mb-4 flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Wolny termin</div>
                     <div className="text-4xl font-black text-slate-900 tracking-tighter mb-1 group-hover:text-emerald-600">{(s.start_time || "").slice(0, 5)}</div>
@@ -225,20 +264,46 @@ export default function DashboardPage() {
                     <div className="mt-8 w-full bg-emerald-600 text-white text-center py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-600/20 group-hover:bg-emerald-700 transition-all">Rezerwuj</div>
                   </motion.button>
                 )) : (
-                  <div className="col-span-full p-12 bg-white rounded-[3rem] border border-slate-100 text-center text-slate-400 font-medium italic flex flex-col items-center gap-2 uppercase tracking-widest text-[10px]">Brak przyszłych terminów.</div>
+                  <div className="col-span-full p-12 bg-white rounded-[3rem] border border-slate-100 text-center text-slate-400 font-medium italic flex flex-col items-center gap-2 uppercase tracking-widest text-[10px]">
+                    Brak przyszłych terminów na tej stronie.
+                  </div>
+                )}
+
+                {/* PAGINACJA TERMINÓW (ZIELONA) */}
+                {totalSlotPages > 1 && (
+                  <div className="col-span-full flex justify-center items-center gap-4 mt-4 py-4">
+                    <button
+                      disabled={slotPage === 1}
+                      onClick={() => setSlotPage(prev => Math.max(prev - 1, 1))}
+                      className={`p-3 rounded-full border transition-all ${slotPage === 1 ? "opacity-30 cursor-not-allowed" : "hover:bg-emerald-50 hover:border-emerald-500 text-emerald-600 bg-white shadow-sm"}`}
+                    >
+                      <ChevronLeft size={20} />
+                    </button>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                      Strona {slotPage} z {totalSlotPages}
+                    </span>
+                    <button
+                      disabled={slotPage === totalSlotPages}
+                      onClick={() => setSlotPage(prev => Math.min(prev + 1, totalSlotPages))}
+                      className={`p-3 rounded-full border transition-all ${slotPage === totalSlotPages ? "opacity-30 cursor-not-allowed" : "hover:bg-emerald-50 hover:border-emerald-500 text-emerald-600 bg-white shadow-sm"}`}
+                    >
+                      <ChevronRight size={20} />
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
           </section>
         </div>
 
+        {/* SEKCJA ZAREZERWOWANYCH WIZYT PACJENTA */}
         <section className="space-y-8 pt-10">
           <h3 className="text-2xl font-black uppercase tracking-tighter px-2 text-slate-900">Nadchodzące wizyty <span className="bg-blue-600 text-white text-xs px-4 py-1.5 rounded-full ml-2 leading-none">{appointments.length}</span></h3>
           <div className="bg-white rounded-[3.5rem] border border-slate-100 shadow-xl overflow-hidden">
             <table className="w-full text-left uppercase">
               <thead><tr className="bg-slate-50/50 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100"><th className="px-10 py-8">Specjalista</th><th className="px-10 py-8 text-center">Harmonogram</th><th className="px-10 py-8 text-center">Usługa</th><th className="px-10 py-8 text-right">Zarządzaj</th></tr></thead>
               <tbody className="divide-y divide-slate-50 text-[12px] font-black">
-                {appointments.map((a: any) => (
+                {currentApps.map((a: any) => (
                   <tr key={a.id} className="hover:bg-slate-50/30 transition-colors">
                     <td className="px-10 py-8 text-slate-800">lek. dent. {a.dentist_name}</td>
                     <td className="px-10 py-8 text-center"><span className="text-slate-900 block leading-none">{a.slot_date}</span><span className="text-[10px] text-blue-600 tracking-widest uppercase">godz. {(a.start_time || "").slice(0, 5)}</span></td>
@@ -250,11 +315,37 @@ export default function DashboardPage() {
                 ))}
               </tbody>
             </table>
+
             {appointments.length === 0 && <div className="py-24 text-center text-slate-400 font-bold uppercase tracking-widest text-[10px]">Brak nadchodzących wizyt</div>}
+
+            {/* PAGINACJA WIZYT */}
+            {totalAppPages > 1 && (
+              <div className="flex justify-center items-center gap-4 py-6 border-t border-slate-50 bg-white">
+                <button
+                  disabled={appPage === 1}
+                  onClick={() => setAppPage(prev => Math.max(prev - 1, 1))}
+                  className={`p-3 rounded-full border transition-all ${appPage === 1 ? "opacity-30 cursor-not-allowed" : "hover:bg-blue-50 hover:border-blue-600 text-blue-600 shadow-sm"}`}
+                >
+                  <ChevronLeft size={20} />
+                </button>
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  {appPage} / {totalAppPages}
+                </span>
+                <button
+                  disabled={appPage === totalAppPages}
+                  onClick={() => setAppPage(prev => Math.min(prev + 1, totalAppPages))}
+                  className={`p-3 rounded-full border transition-all ${appPage === totalAppPages ? "opacity-30 cursor-not-allowed" : "hover:bg-blue-50 hover:border-blue-600 text-blue-600 shadow-sm"}`}
+                >
+                  <ChevronRight size={20} />
+                </button>
+              </div>
+            )}
+
           </div>
         </section>
       </div>
 
+      {/* MODALE REZERWACJI I ANULOWANIA */}
       <AnimatePresence>
         {showConfirmBook && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
@@ -286,6 +377,7 @@ export default function DashboardPage() {
         )}
       </AnimatePresence>
 
+      {/* NOTYFIKACJA */}
       <AnimatePresence>
         {notification && (
           <motion.div initial={{ opacity: 0, y: 50, x: "-50%" }} animate={{ opacity: 1, y: 0, x: "-50%" }} exit={{ opacity: 0, scale: 0.9, x: "-50%" }} className="fixed bottom-10 left-1/2 z-[300] w-full max-w-md">

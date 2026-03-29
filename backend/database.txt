@@ -64,144 +64,100 @@ UPDATE users
 SET role = 'admin' 
 WHERE email = 'admin@admin.com';
 
-Polskie znaki
-SET client_encoding = 'WIN1250';
-
-
 
 Dodanie lekarzy
 INSERT INTO dentists (first_name, last_name, specialization, email, phone_number) VALUES
 ('Anna', 'Kowalska', 'stomatologia zachowawcza', 'anna.kowalska@dentica.pl', '500100101'),
-('Michał', 'Nowak', 'endodoncja', 'michal.nowak@dentica.pl', '500100102'),
-('Katarzyna', 'Wiśniewska', 'ortodoncja', 'katarzyna.wisniewska@dentica.pl', '500100103'),
-('Tomasz', 'Zieliński', 'chirurgia stomatologiczna', 'tomasz.zielinski@dentica.pl', '500100104'),
-('Magdalena', 'Wójcik', 'protetyka', 'magdalena.wojcik@dentica.pl', '500100105'),
-('Piotr', 'Kamiński', 'implantologia', 'piotr.kaminski@dentica.pl', '500100106'),
+('Michal', 'Nowak', 'endodoncja', 'michal.nowak@dentica.pl', '500100102'),
+('Katarzyna', 'Wisniewska', 'ortodoncja', 'katarzyna.wisniewska@dentica.pl', '500100103'),
+('Tomasz', 'Zielinski', 'chirurgia stomatologiczna', 'tomasz.zielinski@dentica.pl', '500100104'),
+('Magdalena', 'Wojcik', 'protetyka', 'magdalena.wojcik@dentica.pl', '500100105'),
+('Piotr', 'Kaminski', 'implantologia', 'piotr.kaminski@dentica.pl', '500100106'),
 ('Joanna', 'Lewandowska', 'periodontologia', 'joanna.lewandowska@dentica.pl', '500100107'),
-('Aleksandra', 'Dąbrowska', 'stomatologia dziecięca', 'aleksandra.dabrowska@dentica.pl', '500100108');
-
+('Aleksandra', 'Dabrowska', 'stomatologia dziecieca', 'aleksandra.dabrowska@dentica.pl', '500100108');
 
 Dodanie zabiegow
 INSERT INTO services (name, price) VALUES
-
--- STOMATOLOGIA ZACHOWAWCZA
-('Przegląd stomatologiczny', 100.00),
+('Przeglad stomatologiczny', 100.00),
 ('Higienizacja (skaling + piaskowanie + fluoryzacja)', 350.00),
-('Wypełnienie kompozytowe małe', 220.00),
-('Wypełnienie kompozytowe średnie', 260.00),
-('Wypełnienie kompozytowe duże', 320.00),
-('Odbudowa zęba', 400.00),
-
--- ENDODONCJA
-('Leczenie kanałowe jednokanałowe', 600.00),
-('Leczenie kanałowe dwukanałowe', 800.00),
-('Leczenie kanałowe wielokanałowe', 1000.00),
-('Powtórne leczenie kanałowe (re-endo)', 1200.00),
-
--- CHIRURGIA STOMATOLOGICZNA
-('Ekstrakcja zęba', 300.00),
-('Ekstrakcja chirurgiczna (ósemki)', 600.00),
-('Resekcja wierzchołka korzenia', 700.00),
-('Nacięcie ropnia', 250.00),
-
--- ORTODONCJA
+('Wypelnienie kompozytowe male', 220.00),
+('Wypelnienie kompozytowe srednie', 260.00),
+('Wypelnienie kompozytowe duze', 320.00),
+('Odbudowa zeba', 400.00),
+('Leczenie kanalowe jednokanalowe', 600.00),
+('Leczenie kanalowe dwukanalowe', 800.00),
+('Leczenie kanalowe wielokanalowe', 1000.00),
+('Powtorne leczenie kanalowe (re-endo)', 1200.00),
+('Ekstrakcja zeba', 300.00),
+('Ekstrakcja chirurgiczna (osemki)', 600.00),
+('Resekcja wierzcholka korzenia', 700.00),
+('Naciecie ropnia', 250.00),
 ('Konsultacja ortodontyczna', 150.00),
-('Aparat stały (metalowy) - jeden łuk', 2800.00),
+('Aparat staly (metalowy) - jeden luk', 2800.00),
 ('Aparat estetyczny (ceramiczny)', 3500.00),
-('Alignery (nakładki ortodontyczne)', 8000.00),
-
--- PROTETYKA
+('Alignery (nakladki ortodontyczne)', 8000.00),
 ('Korona porcelanowa', 1500.00),
 ('Most protetyczny (za punkt)', 1200.00),
 ('Proteza akrylowa', 1800.00),
-('Licówki porcelanowe', 2000.00),
-
--- IMPLANTOLOGIA
+('Licowki porcelanowe', 2000.00),
 ('Implant stomatologiczny (wszczepienie)', 3500.00),
 ('Korona na implancie', 2500.00),
 ('Podniesienie dna zatoki', 2000.00),
-
--- PERIODONTOLOGIA
-('Kiretaż zamknięty', 400.00),
-('Kiretaż otwarty', 800.00),
-('Leczenie zapalenia dziąseł', 300.00),
-
--- STOMATOLOGIA DZIECIĘCA
+('Kiretaz zamkniety', 400.00),
+('Kiretaz otwarty', 800.00),
+('Leczenie zapalenia dziasel', 300.00),
 ('Wizyta adaptacyjna dziecka', 100.00),
-('Lakowanie zębów', 150.00),
-('Leczenie zęba mlecznego', 200.00);
+('Lakowanie zebow', 150.00),
+('Leczenie zeba mlecznego', 200.00);
 
 Przypisanie zabiegow do lekarzy
 INSERT INTO dentist_services (dentist_id, service_id) VALUES
-
--- 1. Anna Kowalska - stomatologia zachowawcza
 (1, 1), -- Przegląd stomatologiczny
 (1, 2), -- Higienizacja
 (1, 3), -- Wypełnienie małe
 (1, 4), -- Wypełnienie średnie
 (1, 5), -- Wypełnienie duże
 (1, 6), -- Odbudowa zęba
-
--- 2. Michał Nowak - endodoncja
 (2, 7),  -- Leczenie kanałowe jednokanałowe
 (2, 8),  -- Leczenie kanałowe dwukanałowe
 (2, 9),  -- Leczenie kanałowe wielokanałowe
 (2, 10), -- Re-endo
-
--- 3. Katarzyna Wiśniewska - ortodoncja
 (3, 15), -- Konsultacja ortodontyczna
 (3, 16), -- Aparat stały metalowy
 (3, 17), -- Aparat estetyczny
 (3, 18), -- Alignery
-
--- 4. Tomasz Zieliński - chirurgia stomatologiczna
 (4, 11), -- Ekstrakcja zęba
 (4, 12), -- Ekstrakcja chirurgiczna ósemki
 (4, 13), -- Resekcja wierzchołka korzenia
 (4, 14), -- Nacięcie ropnia
-
--- 5. Magdalena Wójcik - protetyka
 (5, 19), -- Korona porcelanowa
 (5, 20), -- Most protetyczny
 (5, 21), -- Proteza akrylowa
 (5, 22), -- Licówki porcelanowe
-
--- 6. Piotr Kamiński - implantologia
 (6, 23), -- Implant stomatologiczny
 (6, 24), -- Korona na implancie
 (6, 25), -- Podniesienie dna zatoki
-
--- 7. Joanna Lewandowska - periodontologia
 (7, 26), -- Kiretaż zamknięty
 (7, 27), -- Kiretaż otwarty
 (7, 28), -- Leczenie zapalenia dziąseł
-
--- 8. Aleksandra Dąbrowska - stomatologia dziecięca
 (8, 29), -- Wizyta adaptacyjna dziecka
 (8, 30), -- Lakowanie zębów
 (8, 31); -- Leczenie zęba mlecznego
 
 
-Dodatnie terminow - do poprawki
+/* 1. Najpierw czyścimy całą tabelę, żeby nie dublować terminów */
+DELETE FROM available_slots;
+
+/* 2. Generujemy nowe terminy dla każdego lekarza i każdej jego usługi */
 INSERT INTO available_slots (dentist_id, slot_date, start_time, end_time, is_available, service_name)
 SELECT
-    d.id,
-    CURRENT_DATE + i,
-    ('09:00:00'::time + (j * INTERVAL '1 hour'))::time,
-    ('09:30:00'::time + (j * INTERVAL '1 hour'))::time,
-    TRUE,
-    CASE
-        WHEN d.specialization = 'stomatologia zachowawcza' THEN 'Przegląd stomatologiczny'
-        WHEN d.specialization = 'endodoncja' THEN 'Leczenie kanałowe jednokanałowe'
-        WHEN d.specialization = 'ortodoncja' THEN 'Konsultacja ortodontyczna'
-        WHEN d.specialization = 'chirurgia stomatologiczna' THEN 'Ekstrakcja zęba'
-        WHEN d.specialization = 'protetyka' THEN 'Korona porcelanowa'
-        WHEN d.specialization = 'implantologia' THEN 'Implant stomatologiczny (wszczepienie)'
-        WHEN d.specialization = 'periodontologia' THEN 'Leczenie zapalenia dziąseł'
-        WHEN d.specialization = 'stomatologia dziecięca' THEN 'Wizyta adaptacyjna dziecka'
-        ELSE 'Konsultacja'
-    END
-FROM dentists d
-CROSS JOIN generate_series(1, 4) AS i
-CROSS JOIN generate_series(0, 4) AS j;
-
+    ds.dentist_id,                         -- Pobiera ID lekarza z tabeli powiązań
+    CURRENT_DATE + i,                      -- Ustala datę: dzisiaj + 'i' dni
+    ('08:00:00'::time + (j * INTERVAL '1 hour'))::time,   -- Godzina rozpoczęcia (co godzinę od 08:00)
+    ('08:30:00'::time + (j * INTERVAL '1 hour'))::time,   -- Godzina zakończenia (wizyta trwa 30 min)
+    TRUE,                                  -- Ustawia termin jako dostępny (wolny)
+    s.name                                 -- Pobiera idealną nazwę usługi prosto z cennika (services)
+FROM dentist_services ds
+JOIN services s ON ds.service_id = s.id    -- Łączymy tabele, żeby wiedzieć, który lekarz co robi
+CROSS JOIN generate_series(1, 7) AS i      -- 'i' to dni: generuje terminy na 7 najbliższych dni
+CROSS JOIN generate_series(0, 8) AS j;     -- 'j' to godziny: generuje 9 slotów dziennie (0-8)
