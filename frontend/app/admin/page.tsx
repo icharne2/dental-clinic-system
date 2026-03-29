@@ -20,6 +20,8 @@ export default function AdminDashboard() {
 
   const [appointments, setAppointments] = useState<any[]>([]);
   const [dentists, setDentists] = useState<any[]>([]);
+  // 1. Zapewniamy stan dla pacjentów z bazy danych
+  const [dbPatients, setDbPatients] = useState<any[]>([]);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [patientSearch, setPatientSearch] = useState("");
@@ -56,19 +58,31 @@ export default function AdminDashboard() {
     const token = localStorage.getItem("token");
     if (!token) { router.push("/auth"); return; }
     try {
-      const [resApps, resDents] = await Promise.all([
+      // 2. Pobieramy dane. Dodajemy obsługę błędu dla pacjentów, by nie blokowała reszty
+      const [resApps, resDents, resPats] = await Promise.all([
         fetch("http://127.0.0.1:8000/admin/appointments", { headers: { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-cache' } }),
-        fetch("http://127.0.0.1:8000/dentists")
+        fetch("http://127.0.0.1:8000/dentists"),
+        fetch("http://127.0.0.1:8000/admin/patients", { headers: { Authorization: `Bearer ${token}` } }).catch(() => null)
       ]);
-      setAppointments(await resApps.json());
-      setDentists(await resDents.json());
-    } catch (err) { notify("Błąd pobierania danych", "error"); }
-    finally { setIsLoading(false); }
+
+      if (resApps && resApps.ok) setAppointments(await resApps.json());
+      if (resDents && resDents.ok) setDentists(await resDents.json());
+
+      // Jeśli endpoint /admin/patients działa, wpisujemy pacjentów do stanu
+      if (resPats && resPats.ok) {
+        const patsData = await resPats.json();
+        setDbPatients(Array.isArray(patsData) ? patsData : []);
+      }
+    } catch (err) {
+      notify("Błąd połączenia z bazą", "error");
+    } finally {
+      setIsLoading(false);
+    }
   }, [router]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // --- AKCJE ---
+  // --- AKCJE (BEZ ZMIAN) ---
   const handleAddDentist = async (e: React.FormEvent) => {
     e.preventDefault();
     const token = localStorage.getItem("token");
@@ -133,10 +147,18 @@ export default function AdminDashboard() {
   };
 
   // --- FILTROWANIE ---
+  // 3. NAPRAWA: Łączymy pacjentów z bazy (dbPatients) oraz tych z wizyt (appointments)
   const patientsList = useMemo(() => {
-    const unique = Array.from(new Set(appointments.map(a => a.patient_name)));
-    return unique.filter(name => name?.toLowerCase().includes(patientSearch.toLowerCase()));
-  }, [appointments, patientSearch]);
+    const fromDb = dbPatients.map(p => `${p.first_name} ${p.last_name}`);
+    const fromApps = appointments.map(a => a.patient_name);
+
+    // Set usuwa duplikaty
+    const allNames = Array.from(new Set([...fromDb, ...fromApps]));
+
+    return allNames.filter(name =>
+      name && name.toLowerCase().includes(patientSearch.toLowerCase())
+    );
+  }, [dbPatients, appointments, patientSearch]);
 
   const filteredApps = appointments.filter(a =>
     String(a.patient_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -274,8 +296,6 @@ export default function AdminDashboard() {
                 <div className="lg:col-span-8 bg-white p-10 rounded-[3.5rem] border border-slate-100 shadow-sm space-y-8 h-fit">
                   <h2 className="text-xl font-black uppercase flex items-center gap-3 text-slate-900"><Calendar className="text-blue-600" /> Dodaj Termin</h2>
                   <form onSubmit={handleAddSlot} className="space-y-8">
-
-                    {/* ŁADNA LISTA LEKARZY */}
                     <div className="space-y-4">
                       <label className="text-[10px] font-black uppercase text-slate-400 ml-2">1. Wybierz Lekarza</label>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-2 bg-slate-50 rounded-[2rem] border border-slate-100">
@@ -381,6 +401,7 @@ export default function AdminDashboard() {
              </motion.div>
           )}
 
+          {/* TAB: PATIENTS */}
           {activeTab === 'patients' && (
             <motion.div key="pats" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="bg-white p-10 rounded-[3.5rem] border border-slate-100 shadow-sm space-y-8">
                <div className="flex justify-between items-center px-4">
@@ -388,18 +409,25 @@ export default function AdminDashboard() {
                   <div className="relative w-64"><Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18}/><input type="text" placeholder="Szukaj..." className="w-full pl-12 p-4 rounded-2xl bg-slate-50 border-none font-bold text-sm outline-none uppercase" value={patientSearch} onChange={e => setPatientSearch(e.target.value)} /></div>
                </div>
                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {patientsList.map((p, i) => (
-                    <button key={i} onClick={() => setSelectedPatient(p)} className="w-full text-left p-6 rounded-3xl bg-slate-50 hover:bg-blue-600 hover:text-white transition-all flex justify-between items-center group shadow-sm">
-                       <span className="font-black text-[12px] uppercase">{p || 'Bezimienny'}</span><History size={16} className="group-hover:text-white text-slate-300"/>
-                    </button>
-                  ))}
+                  {/* WYŚWIETLANIE LISTY PACJENTÓW */}
+                  {patientsList.length > 0 ? (
+                    patientsList.map((p, i) => (
+                      <button key={i} onClick={() => setSelectedPatient(p)} className="w-full text-left p-6 rounded-3xl bg-slate-50 hover:bg-blue-600 hover:text-white transition-all flex justify-between items-center group shadow-sm">
+                         <span className="font-black text-[12px] uppercase">{p || 'Bezimienny'}</span><History size={16} className="group-hover:text-white text-slate-300"/>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="col-span-full py-10 text-center text-slate-300 font-black uppercase text-[10px] tracking-widest">
+                      Brak pacjentów w bazie danych
+                    </div>
+                  )}
                </div>
             </motion.div>
           )}
         </AnimatePresence>
       </main>
 
-      {/* MODALE - HISTORIA, POTWIERDZENIA I USUNIĘCIA */}
+      {/* MODALE POZOSTAJĄ BEZ ZMIAN */}
       <AnimatePresence>
         {selectedPatient && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
@@ -434,7 +462,6 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* MODAL ANULOWANIA WIZYTY */}
         {showConfirmCancel && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowConfirmCancel(false)} className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" />
@@ -450,7 +477,6 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* MODAL USUWANIA LEKARZA */}
         {showConfirmDeleteDoctor && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowConfirmDeleteDoctor(false)} className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" />
@@ -466,7 +492,6 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* MODAL USUWANIA USŁUGI */}
         {showConfirmDeleteService && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowConfirmDeleteService(false)} className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" />

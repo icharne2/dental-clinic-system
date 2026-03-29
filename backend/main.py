@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 import jwt
 import bcrypt
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 # Ładowanie zmiennych środowiskowych
@@ -130,11 +130,9 @@ def get_slots():
     conn = get_db_connection()
     cur = conn.cursor()
     try:
-        # Usuwamy stare dni
         cur.execute("DELETE FROM available_slots WHERE slot_date < CURRENT_DATE;")
         conn.commit()
 
-        # Pobieramy tylko te, które są faktycznie w przyszłości (dzień + godzina)
         cur.execute("""
             SELECT s.id, s.slot_date, s.start_time, s.dentist_id, d.last_name as dentist_name, 
                    COALESCE(s.service_name, 'Konsultacja') as type
@@ -178,7 +176,6 @@ def get_appointments(user_id: int = Depends(get_current_user_id)):
     conn = get_db_connection()
     cur = conn.cursor()
     try:
-        # Pacjent widzi tylko NADCHODZĄCE (dzisiejsze z ranną godziną znikają)
         cur.execute("""
             SELECT 
                 a.id, a.slot_id, d.last_name as dentist_name, 
@@ -217,6 +214,25 @@ def cancel_appointment(appointment_id: int, slot_id: int, user_id: int = Depends
 
 
 # --- ADMIN (ADMIN/PAGE) ---
+
+# --- NOWO DODANY ENDPOINT PACJENTÓW ---
+@app.get("/admin/patients")
+def admin_get_patients(admin=Depends(get_current_admin)):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        # Pobieramy wszystkich użytkowników z rolą 'patient'
+        cur.execute("""
+            SELECT id, first_name, last_name, email 
+            FROM users 
+            WHERE role = 'patient'
+            ORDER BY last_name ASC, first_name ASC;
+        """)
+        res = cur.fetchall()
+        return res
+    finally:
+        cur.close(); conn.close()
+# --------------------------------------
 
 @app.post("/admin/dentists")
 def admin_add_dentist(dentist: DentistCreate, admin=Depends(get_current_admin)):
@@ -294,7 +310,6 @@ def admin_get_all(admin=Depends(get_current_admin)):
     conn = get_db_connection()
     cur = conn.cursor()
     try:
-        # Admin widzi wszystko (Historia + Nadchodzące)
         cur.execute("""
             SELECT a.id, a.slot_id, (u.first_name || ' ' || u.last_name) as patient_name, d.last_name as dentist_name, 
                    s.slot_date, s.start_time, a.status, COALESCE(a.custom_service, s.service_name, 'Konsultacja') as service_name

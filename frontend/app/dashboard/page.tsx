@@ -30,7 +30,6 @@ export default function DashboardPage() {
   const router = useRouter();
   const denticaBlue = "#0A2EE2";
 
-  // LOGO ZĘBA Z AUTH
   const ToothIcon = ({ className }: { className?: string }) => (
     <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
       <path d="M17 3C15.5 3 13.5 4.5 12 4.5C10.5 4.5 8.5 3 7 3C4 3 2 5.5 2 9C2 12.5 3.5 15.5 5 18C6.5 20.5 7 22 7 23C7 23.5 7.5 24 8 24H9C9.5 24 10 23.5 10 23C10 20.5 11 18 12 18C13 18 14 20.5 14 23C14 23.5 14.5 24 15 24H16C16.5 24 17 23.5 17 23C17 22 17.5 20.5 19 18C20.5 15.5 22 12.5 22 9C22 5.5 20 3 17 3Z" />
@@ -70,7 +69,6 @@ export default function DashboardPage() {
     }
   }, [router]);
 
-  // PEŁNY RESET FILTRÓW
   const handleResetFilters = () => {
     setSearchTerm("");
     setSelectedDentistId(null);
@@ -121,7 +119,6 @@ export default function DashboardPage() {
 
   return (
     <main className="min-h-screen bg-[#F8FAFC] font-sans text-slate-900 pb-20 selection:bg-blue-600">
-
       <header className="bg-white/80 backdrop-blur-md sticky top-0 z-[100] border-b border-slate-100">
         <div className="max-w-[1600px] mx-auto px-6 lg:px-12 py-5 flex justify-between items-center">
           <div className="flex items-center gap-4">
@@ -175,6 +172,31 @@ export default function DashboardPage() {
                   <ChevronRight size={18} className={selectedDentistId === d.id ? "rotate-90" : ""} />
                 </button>
               ))}
+
+              {/* SEKACJA PAGINACJI LEKARZY */}
+              {totalDentistPages > 1 && (
+                <div className="flex justify-center items-center gap-4 mt-8 py-4">
+                  <button
+                    disabled={dentistPage === 1}
+                    onClick={() => setDentistPage(prev => Math.max(prev - 1, 1))}
+                    className={`p-3 rounded-full border transition-all ${dentistPage === 1 ? "opacity-30 cursor-not-allowed" : "hover:bg-blue-50 hover:border-blue-600 text-blue-600 bg-white shadow-sm"}`}
+                  >
+                    <ChevronLeft size={20} />
+                  </button>
+
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                    {dentistPage} / {totalDentistPages}
+                  </span>
+
+                  <button
+                    disabled={dentistPage === totalDentistPages}
+                    onClick={() => setDentistPage(prev => Math.min(prev + 1, totalDentistPages))}
+                    className={`p-3 rounded-full border transition-all ${dentistPage === totalDentistPages ? "opacity-30 cursor-not-allowed" : "hover:bg-blue-50 hover:border-blue-600 text-blue-600 bg-white shadow-sm"}`}
+                  >
+                    <ChevronRight size={20} />
+                  </button>
+                </div>
+              )}
             </div>
           </section>
 
